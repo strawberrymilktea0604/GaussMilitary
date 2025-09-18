@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Gauss Calculator">
+    <title>Gauss Map Sheet Neighbor Calculator</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 1s ease-out forwards;
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .input-section {
+            margin-bottom: 30px;
+        }
+        .input-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .input-field {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+            padding: 10px;
+        }
+        .input-field:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+            outline: none;
+        }
+        .input-field:nth-child(1) { width: 50px; } /* Latitude band: 1 char */
+        .input-field:nth-child(3) { width: 60px; } /* Longitude zone: 2 chars */
+        .input-field:nth-child(5) { width: 70px; } /* 100k grid: 3 chars */
+        .input-field:nth-child(7) { width: 50px; } /* 50k grid: 1 char */
+        .input-field:nth-child(9) { width: 50px; } /* 25k grid: 1 char */
+        .input-field:nth-child(11) { width: 50px; } /* 10k grid: 1 char */
+        .dash {
+            font-size: 24px;
+            color: #666;
+            margin: 0 10px;
+        }
+        .calculate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 auto;
+            display: block;
+            -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
+        }
+        .calculate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        .calculate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 30px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .grid-cell {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: scale(0.8);
+            animation: fadeInUp 0.5s ease forwards;
+        }
+        .grid-cell.center {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .grid-cell:nth-child(1) { animation-delay: 0.1s; }
+        .grid-cell:nth-child(2) { animation-delay: 0.2s; }
+        .grid-cell:nth-child(3) { animation-delay: 0.3s; }
+        .grid-cell:nth-child(4) { animation-delay: 0.4s; }
+        .grid-cell:nth-child(5) { animation-delay: 0.5s; }
+        .grid-cell:nth-child(6) { animation-delay: 0.6s; }
+        .grid-cell:nth-child(7) { animation-delay: 0.7s; }
+        .grid-cell:nth-child(8) { animation-delay: 0.8s; }
+        .grid-cell:nth-child(9) { animation-delay: 0.9s; }
+        .grid-cell.center {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+            white-space: pre-line;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            padding: 10px;
+            display: none; /* Hidden by default */
+        }
+        .instructions {
+            text-align: center;
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .rules {
+            text-align: center;
+            color: #555;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 20px;
+                margin: 10px;
+                max-width: 100%;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+                margin-bottom: 20px;
+            }
+            
+            .input-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .input-field {
+                width: 60px !important;
+                height: 45px;
+                font-size: 16px; /* Prevent zoom on iOS */
+                margin: 5px 2px;
+                -webkit-appearance: none; /* Remove iOS styling */
+                appearance: none; /* Standard property */
+                border-radius: 6px;
+            }
+            
+            .dash {
+                margin: 5px 5px;
+                font-size: 20px;
+            }
+            
+            .rules {
+                font-size: 12px;
+                padding: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .calculate-btn {
+                padding: 12px 25px;
+                font-size: 16px;
+                margin-top: 10px;
+                min-height: 44px; /* iOS minimum touch target */
+                min-width: 44px;
+            }
+            
+            .grid-container {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                max-width: 300px;
+            }
+            
+            .grid-cell {
+                padding: 12px;
+                font-size: 14px;
+                min-height: 45px;
+            }
+            
+            .error-message {
+                font-size: 14px;
+                padding: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+                margin: 5px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+            }
+            
+            .input-field {
+                width: 50px !important;
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .rules {
+                font-size: 11px;
+                padding: 8px;
+            }
+            
+            .grid-container {
+                max-width: 250px;
+                gap: 5px;
+            }
+            
+            .grid-cell {
+                padding: 8px;
+                font-size: 12px;
+                min-height: 40px;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 900px;
+                padding: 40px;
+            }
+            
+            h1 {
+                font-size: 3em;
+            }
+            
+            .input-field {
+                width: 60px;
+                height: 60px;
+                font-size: 20px;
+            }
+            
+            .rules {
+                font-size: 15px;
+                padding: 20px;
+            }
+            
+            .calculate-btn {
+                padding: 18px 35px;
+                font-size: 20px;
+            }
+            
+            .grid-container {
+                max-width: 500px;
+            }
+            
+            .grid-cell {
+                padding: 18px;
+                font-size: 18px;
+                min-height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gauss Map Sheet Neighbor Calculator</h1>
+        <div class="instructions">
+            Nhập số hiệu bản đồ Gauss (từ 2-6 cấp). Mỗi cấp có độ dài ký tự cố định.
+        </div>
+        <div class="rules">
+            <strong>Quy tắc nhập:</strong><br>
+            • Cấp 1 (Đới vĩ độ): 1 ký tự A-X (trừ I,O)<br>
+            • Cấp 2 (Múi kinh độ): số 1-60<br>
+            • Cấp 3 (Lưới 100k): số 1-144<br>
+            • Cấp 4 (Lưới 50k): 1 ký tự A-D<br>
+            • Cấp 5 (Lưới 25k): 1 ký tự a-d<br>
+            • Cấp 6 (Lưới 10k): 1 ký tự 1-4
+        </div>
+        <div class="input-section">
+            <div class="input-group" id="input-group">
+                <!-- Input fields will be generated by PyScript -->
+            </div>
+            <button class="calculate-btn" id="calculate-btn" disabled>Tính toán</button>
+            <div class="error-message" id="error-message"></div>
+        </div>
+        <div class="grid-container" id="grid-container">
+            <!-- Grid cells will be generated by PyScript -->
+        </div>
+    </div>
+
+    <py-script>
+        import js
+        from pyodide.ffi import create_proxy
+
+        class FlexibleGaussMapSheet:
+            """
+            Lớp xử lý và tìm kiếm các mảnh bản đồ lân cận với đầu vào linh hoạt.
+            Chấp nhận số hiệu có từ 1 đến 6 thành phần.
+            Ví dụ: 'F-48', 'F-48-12', 'F-48-12-B-b-2', v.v.
+            """
+            # Ánh xạ từ ký tự sang tọa độ (hàng, cột)
+            QUAD_CAP_TO_COORD = {'A': (0, 0), 'B': (0, 1), 'C': (1, 0), 'D': (1, 1)}
+            COORD_TO_QUAD_CAP = {v: k for k, v in QUAD_CAP_TO_COORD.items()}
+            QUAD_LOW_TO_COORD = {'a': (0, 0), 'b': (0, 1), 'c': (1, 0), 'd': (1, 1)}
+            COORD_TO_QUAD_LOW = {v: k for k, v in QUAD_LOW_TO_COORD.items()}
+            QUAD_NUM_TO_COORD = {'1': (0, 0), '2': (0, 1), '3': (1, 0), '4': (1, 1)}
+            COORD_TO_QUAD_NUM = {v: k for k, v in QUAD_NUM_TO_COORD.items()}
+            LAT_BANDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M',
+                         'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
+
+            def __init__(self, map_id: str):
+                """
+                Khởi tạo đối tượng từ số hiệu bản đồ (có thể không đầy đủ).
+                """
+                self.original_id = map_id
+                self.parts = map_id.strip().split('-')
+                self.num_parts = len(self.parts)
+                if not (1 <= self.num_parts <= 6):
+                    raise ValueError("Số hiệu bản đồ phải có từ 1 đến 6 thành phần.")
+
+            def _calculate_neighbor(self, d_row: int, d_col: int) -> str:
+                """
+                Tính toán số hiệu của một mảnh lân cận.
+                Bắt đầu từ cấp chi tiết nhất có trong input.
+                """
+                # Khởi tạo số nhớ ban đầu từ hướng di chuyển
+                carry_row, carry_col = d_row, d_col
+
+                # Tạo một list để chứa các phần của số hiệu mới
+                neighbor_parts = list(self.parts)
+
+                try:
+                    # Xử lý ngược từ cấp chi tiết nhất lên cấp thô nhất
+                    # Cấp 6 (1:10.000, ví dụ: '2') - Lưới 2x2
+                    if self.num_parts >= 6:
+                        (r, c) = self.QUAD_NUM_TO_COORD[self.parts[5]]
+                        new_r, new_c = r + carry_row, c + carry_col
+                        carry_row, out_r = divmod(new_r, 2)
+                        carry_col, out_c = divmod(new_c, 2)
+                        neighbor_parts[5] = self.COORD_TO_QUAD_NUM[(out_r, out_c)]
+
+                    # Cấp 5 (1:25.000, ví dụ: 'b') - Lưới 2x2
+                    if self.num_parts >= 5:
+                        (r, c) = self.QUAD_LOW_TO_COORD[self.parts[4]]
+                        new_r, new_c = r + carry_row, c + carry_col
+                        carry_row, out_r = divmod(new_r, 2)
+                        carry_col, out_c = divmod(new_c, 2)
+                        neighbor_parts[4] = self.COORD_TO_QUAD_LOW[(out_r, out_c)]
+
+                    # Cấp 4 (1:50.000, ví dụ: 'B') - Lưới 2x2
+                    if self.num_parts >= 4:
+                        (r, c) = self.QUAD_CAP_TO_COORD[self.parts[3]]
+                        new_r, new_c = r + carry_row, c + carry_col
+                        carry_row, out_r = divmod(new_r, 2)
+                        carry_col, out_c = divmod(new_c, 2)
+                        neighbor_parts[3] = self.COORD_TO_QUAD_CAP[(out_r, out_c)]
+
+                    # Cấp 3 (1:100.000, ví dụ: '12') - Lưới 12x12
+                    if self.num_parts >= 3:
+                        sheet_100k = int(self.parts[2])
+                        r = (sheet_100k - 1) // 12
+                        c = (sheet_100k - 1) % 12
+                        new_r, new_c = r + carry_row, c + carry_col
+                        carry_row, out_r = divmod(new_r, 12)
+                        carry_col, out_c = divmod(new_c, 12)
+                        neighbor_parts[2] = str(out_r * 12 + out_c + 1)
+
+                    # Cấp 2 (Múi kinh độ, ví dụ: '48')
+                    if self.num_parts >= 2:
+                        lon_zone = int(self.parts[1])
+                        new_lon = lon_zone + carry_col
+                        # Xử lý khi vượt qua múi 60 hoặc 1
+                        if new_lon > 60: new_lon = 1
+                        if new_lon < 1: new_lon = 60
+                        neighbor_parts[1] = str(new_lon)
+
+                    # Cấp 1 (Đới vĩ độ, ví dụ: 'F')
+                    if self.num_parts >= 1:
+                        lat_band = self.parts[0]
+                        lat_index = self.LAT_BANDS.index(lat_band)
+                        new_lat_index = lat_index - carry_row
+                        if not (0 <= new_lat_index < len(self.LAT_BANDS)):
+                            return "Vượt giới hạn"
+                        neighbor_parts[0] = self.LAT_BANDS[new_lat_index]
+
+                except (KeyError, ValueError):
+                     return "Input không hợp lệ" # Xử lý nếu ký tự trong input sai (vd: 'F-48-X')
+
+                return "-".join(neighbor_parts)
+
+            def get_surrounding_grid(self) -> list[list[str]]:
+                """
+                Trả về một lưới 3x3 chứa mảnh trung tâm và 8 mảnh xung quanh.
+                """
+                # Các hướng tương đối (hàng, cột)
+                grid_moves = [
+                    (-1, -1), (-1, 0), (-1, 1),
+                    (0, -1),  (0, 0),  (0, 1),
+                    (1, -1),  (1, 0),  (1, 1)
+                ]
+
+                grid_result = []
+                for i in range(0, 9, 3):
+                    row = []
+                    for j in range(3):
+                        d_row, d_col = grid_moves[i+j]
+                        if d_row == 0 and d_col == 0:
+                            row.append(self.original_id)
+                        else:
+                            row.append(self._calculate_neighbor(d_row, d_col))
+                    grid_result.append(row)
+                return grid_result
+
+        def create_input_fields():
+            input_group = js.document.getElementById('input-group')
+            input_group.innerHTML = ''
+            
+            # Gauss map level configurations
+            levels = [
+                {'name': 'latitude', 'maxLength': 1},
+                {'name': 'longitude', 'maxLength': 2},
+                {'name': '100k', 'maxLength': 3},
+                {'name': '50k', 'maxLength': 1},
+                {'name': '25k', 'maxLength': 1},
+                {'name': '10k', 'maxLength': 1}
+            ]
+            
+            for i, level in enumerate(levels):
+                if i > 0:
+                    dash = js.document.createElement('span')
+                    dash.textContent = '-'
+                    dash.className = 'dash'
+                    input_group.appendChild(dash)
+                
+                input_field = js.document.createElement('input')
+                input_field.type = 'text'
+                input_field.className = 'input-field'
+                input_field.maxLength = level['maxLength']
+                input_field.id = f'input-{i}'
+                input_field.addEventListener('input', create_proxy(validate_input))
+                input_group.appendChild(input_field)
+
+        def validate_input(event):
+            inputs = [js.document.getElementById(f'input-{i}').value for i in range(6)]
+            
+            # Count filled inputs from left to right
+            filled_count = 0
+            for inp in inputs:
+                if inp.strip():
+                    filled_count += 1
+                else:
+                    break  # Stop at first empty input
+            
+            if filled_count < 2:
+                show_error("Cần nhập ít nhất 2 cấp (đới vĩ độ và múi kinh độ).")
+                disable_calculate()
+                return
+            
+            # Validate each filled level
+            validation_errors = []
+            
+            # Level 1: Latitude band (1 char: A-X except I,O)
+            if filled_count >= 1:
+                lat = inputs[0].strip().upper()
+                if not lat or len(lat) != 1 or lat not in 'ABCDEFGHJKMNPQRSTUVWXYZ':
+                    validation_errors.append("Đới vĩ độ: 1 ký tự A-X (trừ I,O)")
+            
+            # Level 2: Longitude zone (2 chars: 01-60) - allow normal numbers
+            if filled_count >= 2:
+                lon = inputs[1].strip()
+                if not lon or not lon.isdigit():
+                    validation_errors.append("Múi kinh độ: phải là số")
+                else:
+                    lon_num = int(lon)
+                    if not (1 <= lon_num <= 60):
+                        validation_errors.append("Múi kinh độ: 1-60")
+                    else:
+                        # Auto-pad with zero if needed
+                        inputs[1] = f"{lon_num:02d}"
+            
+            # Level 3: 100k grid (3 chars: 001-144) - allow normal numbers
+            if filled_count >= 3:
+                grid100k = inputs[2].strip()
+                if not grid100k or not grid100k.isdigit():
+                    validation_errors.append("Lưới 100k: phải là số")
+                else:
+                    grid_num = int(grid100k)
+                    if not (1 <= grid_num <= 144):
+                        validation_errors.append("Lưới 100k: 1-144")
+                    else:
+                        # Auto-pad with zeros if needed
+                        inputs[2] = f"{grid_num:03d}"
+            
+            # Level 4: 50k grid (1 char: A-D)
+            if filled_count >= 4:
+                grid50k = inputs[3].strip().upper()
+                if not grid50k or len(grid50k) != 1 or grid50k not in 'ABCD':
+                    validation_errors.append("Lưới 50k: 1 ký tự A-D")
+            
+            # Level 5: 25k grid (1 char: a-d)
+            if filled_count >= 5:
+                grid25k = inputs[4].strip().lower()
+                if not grid25k or len(grid25k) != 1 or grid25k not in 'abcd':
+                    validation_errors.append("Lưới 25k: 1 ký tự a-d")
+            
+            # Level 6: 10k grid (1 char: 1-4)
+            if filled_count >= 6:
+                grid10k = inputs[5].strip()
+                if not grid10k or len(grid10k) != 1 or grid10k not in '1234':
+                    validation_errors.append("Lưới 10k: 1 ký tự 1-4")
+            
+            if validation_errors:
+                error_text = "Lỗi định dạng:\n" + "\n".join(f"• {error}" for error in validation_errors)
+                show_error(error_text)
+                disable_calculate()
+                return
+            
+            # Build the map_id and validate with the class
+            map_id_parts = [inp.strip() for inp in inputs[:filled_count] if inp.strip()]
+            map_id = '-'.join(map_id_parts)
+            
+            try:
+                FlexibleGaussMapSheet(map_id)
+                hide_error()
+                enable_calculate()
+            except ValueError as e:
+                show_error(f"Lỗi: {str(e)}")
+                disable_calculate()
+
+        def show_error(message):
+            error_div = js.document.getElementById('error-message')
+            error_div.textContent = message
+            error_div.style.display = 'block'
+
+        def hide_error():
+            error_div = js.document.getElementById('error-message')
+            error_div.style.display = 'none'
+
+        def disable_calculate():
+            btn = js.document.getElementById('calculate-btn')
+            btn.disabled = True
+
+        def enable_calculate():
+            btn = js.document.getElementById('calculate-btn')
+            btn.disabled = False
+
+        def calculate(event=None):
+            inputs = [js.document.getElementById(f'input-{i}').value for i in range(6)]
+            map_id_parts = [inp.strip() for inp in inputs if inp.strip()]
+            map_id = '-'.join(map_id_parts)
+            
+            try:
+                map_sheet = FlexibleGaussMapSheet(map_id)
+                grid = map_sheet.get_surrounding_grid()
+                display_grid(grid)
+            except ValueError as e:
+                show_error(str(e))
+
+        def display_grid(grid):
+            container = js.document.getElementById('grid-container')
+            container.innerHTML = ''
+            for i, row in enumerate(grid):
+                for j, cell in enumerate(row):
+                    cell_div = js.document.createElement('div')
+                    cell_div.className = 'grid-cell'
+                    if i == 1 and j == 1:  # Center cell
+                        cell_div.className += ' center'
+                    cell_div.textContent = cell
+                    container.appendChild(cell_div)
+
+        # Initialize
+        create_input_fields()
+        
+        # Add event listener to calculate button
+        btn = js.document.getElementById('calculate-btn')
+        btn.addEventListener('click', create_proxy(calculate))
+    </py-script>
+</body>
+</html>
